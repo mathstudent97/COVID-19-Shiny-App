@@ -1,18 +1,24 @@
-# This function helps to source multiple files which are in the same directory. Just provide it with a path and all .R files in the directory it is
-# pointed to will be sourced. Can be done recursively or not.
+# This function helps to source multiple files which are in the same directory. 
+#Providing it with a path, will source all .R files in the directory.
+#This can be done recursively.
 sourceDirectory <- function(path, recursive = FALSE, local = TRUE) {
   if (!dir.exists(path)) {
     warning(paste(path, "is not a valid directory!"))
     return(NULL)
   }
   
-  # Source it where function is called (local)
+  
+  # Source it where function is called (local).
   if (is.logical(local) && local) { env <- parent.frame() }
-  # Source it in global environment
+  
+  # Source it in global environment.
   else if (is.logical(local) && !local) { env <- globalenv() }
-  # Source it in defined environment
+  
+  # Source it in defined environment.
   else if (is.environment(local)) { env <- local }
   else { stop("'local' must be TRUE, FALSE or an environment") }
+  
+  
   
   files <- list.files(path = path, pattern = ".*\\.R", all.files = F, full.names = TRUE, recursive = recursive)
   for (fileToSource in files) {
