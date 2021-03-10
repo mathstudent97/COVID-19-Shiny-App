@@ -1,4 +1,3 @@
-# ---- Loading libraries ----
 library("shiny")
 library("shinydashboard")
 library("tidyverse")
@@ -87,7 +86,7 @@ data_evolution <- data_confirmed_sub %>%
   ungroup()
 
 
-# Calculating new cases
+# Calculating new cases.
 data_evolution <- data_evolution %>%
   group_by(`Province/State`, `Country/Region`) %>%
   mutate(value_new = value - lag(value, 4, default = 0)) %>%
@@ -95,5 +94,67 @@ data_evolution <- data_evolution %>%
 
 # data_evolution table is all we need.
 rm(data_confirmed, data_confirmed_sub, data_recovered, data_recovered_sub, data_deceased, data_deceased_sub)
+
+
+
+### Get the population data.###
+# Below is a function using the World Bank API.
+population <- wb(country = "countries_only", indicator = "SP.POP.TOTL", startdate = 2018, enddate = 2021) %>%
+  select(country, value) %>%
+  rename(population = value)
+
+
+countryNamesPop <- c("Brunei Darussalam", "Congo, Dem. Rep.", "Congo, Rep.", "Czech Republic",
+                     "Egypt, Arab Rep.", "Iran, Islamic Rep.", "Korea, Rep.", "St. Lucia", "West Bank and Gaza", "Russian Federation",
+                     "Slovak Republic", "United States", "St. Vincent and the Grenadines", "Venezuela, RB")
+
+countryNamesDat <- c("Brunei", "Congo (Kinshasa)", "Congo (Brazzaville)", "Czechia", "Egypt", "Iran", "Korea, South",
+                     "Saint Lucia", "occupied Palestinian territory", "Russia", "Slovakia", "US", "Saint Vincent and the Grenadines", "Venezuela")
+
+
+population[which(population$country %in% countryNamesPop), "country"] <- countryNamesDat
+
+
+
+# Take data from Wikipedia (numberOfDataCountries).
+
+noDataCountries <- data.frame(
+  country = c("Cruise Ship", "Guadeloupe", "Guernsey", "Holy See", "Jersey", "Martinique", "Reunion", "Taiwan*"),
+  population = c(3700, 395700, 63026, 800, 106800, 376480, 859959, 23780452)
+)
+
+population <- bind_rows(population, noDataCountries)
+
+data_evolution <- data_evolution %>%
+  left_join(population, by = c("Country/Region" = "country"))
+
+
+# Will remove everything except data_evolution.
+rm(population, countryNamesPop, countryNamesDat, noDataCountries)
+
+
+# Function that will return the latest date.
+data_atDate <- function(inputDate) {
+  data_evolution[which(data_evolution$date == inputDate),] %>%
+    distinct() %>% # Distinct dates.
+    pivot_wider(c("Province/State", "Country/Region", "date", "Lat", "Long", "population"), names_from = var, values_from = value) %>%
+    filter(confirmed > 0 | # Concerned with confirmed or recovered or deceased or acvtive cases.
+             recovered > 0 |
+             deceased > 0 |
+             active > 0)
+}
+
+# This function will filter the data_evolution.
+data_latest <- data_atDate(max(data_evolution$date))
+
+
+top5_countries <- data_evolution %>%
+  filter(var == "active", date == current_date) %>%
+  group_by(`Country/Region`) %>%
+  summarise(value = sum(value, na.rm = T)) %>%
+  arrange(desc(value)) %>%
+  top_n(5) %>%
+  select(`Country/Region`) %>% # Keep any eye on `Country/Region`; might get error; ensure you use right key! (``)
+  pull()
 
 
