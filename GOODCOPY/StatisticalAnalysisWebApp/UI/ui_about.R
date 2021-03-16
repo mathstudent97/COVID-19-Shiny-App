@@ -1,4 +1,4 @@
-
+# About tab.
 
 
 body_about <- dashboardBody(
@@ -28,6 +28,7 @@ body_about <- dashboardBody(
     )
   )
 )
+
 
 
 # About page should be part of the dashboard page.
