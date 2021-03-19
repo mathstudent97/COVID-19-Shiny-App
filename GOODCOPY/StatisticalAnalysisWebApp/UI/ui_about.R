@@ -1,4 +1,4 @@
-# About tab.
+
 
 
 body_about <- dashboardBody(
@@ -6,7 +6,7 @@ body_about <- dashboardBody(
     fluidRow(
       column(
         box(
-          title = div("About this web app", style = "padding-left: 20px", class = "h2"),
+          title = div("About this web app", style = "padding-right: 10px", class = "h3"),
           column(
             h3("COVID-19 Statistical Analysis Dashboard"),
             "This dashboard displays recent stats about the COVID-19 Pandemic.
@@ -16,7 +16,7 @@ body_about <- dashboardBody(
             h3("COVID-19 & Social Distancing"),
             "Please stay safe, keeping in mind to keep your distance towards others.",
             tags$br(),
-            h3("Disclaimer"),
+            h4("Disclaimer"),
             "This app has been created for educational purposes only.",
             width = 12
           ),
@@ -28,7 +28,6 @@ body_about <- dashboardBody(
     )
   )
 )
-
 
 
 # About page should be part of the dashboard page.
