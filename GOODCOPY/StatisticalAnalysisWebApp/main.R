@@ -1,17 +1,19 @@
-library("shiny")
-library("shinydashboard")
-library("tidyverse")
-library("leaflet")
-library("plotly")
-library("DT")
-library("fs")
-library("wbstats")
+library(shiny)
+library(shinydashboard)
+library(tidyverse)
+library(leaflet)
+library(plotly)
+library(DT)
+library(fs)
+library(wbstats)
 
 
 
+source(utils.R, local = T)
 
-source("utils.R", local = T)
 
+
+# Read the data.
 
 downloadGithubData <- function() {
   download.file(
@@ -29,18 +31,25 @@ downloadGithubData <- function() {
 }
 
 
+
+# Update the data.
+
 updateData <- function() {
   # Download data from Johns Hopkins (https://github.com/CSSEGISandData/COVID-19) if the data is older than 0.5h.
+  T_refresh = 0.5 # hours.
   if (!dir_exists("data")) {
     dir.create('data')
     downloadGithubData()
-  } else if ((!file.exists("data/covid19_data.zip")) || (as.double(Sys.time() - file_info("data/covid19_data.zip")$change_time, units = "hours") > 0.5)) {
+  } 
+  else if ((!file.exists("data/covid19_data.zip")) || (as.double(Sys.time() - file_info("data/covid19_data.zip")$change_time, units = "hours") > T_refresh)) 
     downloadGithubData()
-  }
 }
+
+
 
 # Update with start of app.
 updateData()
+
 
 
 # CSV Files needed.
@@ -49,9 +58,11 @@ data_deceased  <- read_csv("data/time_series_covid19_deaths_global.csv")
 data_recovered <- read_csv("data/time_series_covid19_recovered_global.csv")
 
 
-# Get the upddated data.
+
+# Get the latest data.
 current_date <- as.Date(names(data_confirmed)[ncol(data_confirmed)], format = "%m/%d/%y")
 changed_date <- file_info("data/covid19_data.zip")$change_time
+
 
 
 # Get evolution data by country.
@@ -60,10 +71,12 @@ data_confirmed_sub <- data_confirmed %>%
   group_by(`Province/State`, `Country/Region`, date, Lat, Long) %>%
   summarise("confirmed" = sum(value, na.rm = T))
 
+
 data_recovered_sub <- data_recovered %>%
    pivot_longer(names_to = "date", cols = 5:ncol(data_recovered)) %>%
    group_by(`Province/State`, `Country/Region`, date, Lat, Long) %>%
    summarise("recovered" = sum(value, na.rm = T))
+
 
 data_deceased_sub <- data_deceased %>%
   pivot_longer(names_to = "date", cols = 5:ncol(data_deceased)) %>%
@@ -71,26 +84,30 @@ data_deceased_sub <- data_deceased %>%
   summarise("deceased" = sum(value, na.rm = T))
 
 
-data_evolution <- data_confirmed_sub %>%
-  full_join(data_deceased_sub) %>%
-  ungroup() %>%
-  mutate(date = as.Date(date, "%m/%d/%y")) %>%
-  arrange(date) %>%
-  group_by(`Province/State`, `Country/Region`, Lat, Long) %>%
-  mutate(
+# From the confirmed cases, will create an evolution.
+data_evolution <- data_confirmed_sub %>% # Get confirmed data.
+  full_join(data_deceased_sub) %>% # Join with the deceased cases.
+  ungroup() %>% # Will ungroup.
+  mutate(date = as.Date(date, "%m/%d/%y")) %>% # Mutate according to the date.
+  arrange(date) %>% # Arrange according to the date.
+  group_by(`Province/State`, `Country/Region`, Lat, Long) %>% # Same grouping as above (w/ confirmed, deceased, recovered data).
+  mutate( # Mutate according to the recovered data.
     recovered = lag(confirmed, 14, default = 0) - deceased,
     recovered = ifelse(recovered > 0, recovered, 0),
     active = confirmed - recovered - deceased
   ) %>%
-  pivot_longer(names_to = "var", cols = c(confirmed, recovered, deceased, active)) %>%
+  pivot_longer(names_to = "var", cols = c(confirmed, recovered, deceased, active)) %>% # Take the longer pivot along the var name.
   ungroup()
+
 
 
 # Calculating new cases.
+# Further filtering / organizing / grouping the data_evolution.
 data_evolution <- data_evolution %>%
   group_by(`Province/State`, `Country/Region`) %>%
-  mutate(value_new = value - lag(value, 4, default = 0)) %>%
+  mutate(value_new = value - lag(value, 4, default = 0)) %>% # 
   ungroup()
+
 
 # data_evolution table is all we need.
 rm(data_confirmed, data_confirmed_sub, data_recovered, data_recovered_sub, data_deceased, data_deceased_sub)
@@ -98,32 +115,41 @@ rm(data_confirmed, data_confirmed_sub, data_recovered, data_recovered_sub, data_
 
 
 ### Get the population data.###
+# In my UI, I want the latest date.
+# I want data that allows for faster interaction.
 # Below is a function using the World Bank API.
 population <- wb(country = "countries_only", indicator = "SP.POP.TOTL", startdate = 2018, enddate = 2021) %>%
   select(country, value) %>%
   rename(population = value)
 
 
+
 countryNamesPop <- c("Brunei Darussalam", "Congo, Dem. Rep.", "Congo, Rep.", "Czech Republic",
                      "Egypt, Arab Rep.", "Iran, Islamic Rep.", "Korea, Rep.", "St. Lucia", "West Bank and Gaza", "Russian Federation",
                      "Slovak Republic", "United States", "St. Vincent and the Grenadines", "Venezuela, RB")
 
+
 countryNamesDat <- c("Brunei", "Congo (Kinshasa)", "Congo (Brazzaville)", "Czechia", "Egypt", "Iran", "Korea, South",
                      "Saint Lucia", "occupied Palestinian territory", "Russia", "Slovakia", "US", "Saint Vincent and the Grenadines", "Venezuela")
+
 
 
 population[which(population$country %in% countryNamesPop), "country"] <- countryNamesDat
 
 
 
-# Take data from Wikipedia (numberOfDataCountries).
+# Data from Wikipedia (numberOfDataCountries).
 
 noDataCountries <- data.frame(
   country = c("Cruise Ship", "Guadeloupe", "Guernsey", "Holy See", "Jersey", "Martinique", "Reunion", "Taiwan*"),
   population = c(3700, 395700, 63026, 800, 106800, 376480, 859959, 23780452)
 )
 
+
+
 population <- bind_rows(population, noDataCountries)
+
+
 
 data_evolution <- data_evolution %>%
   left_join(population, by = c("Country/Region" = "country"))
@@ -133,7 +159,7 @@ data_evolution <- data_evolution %>%
 rm(population, countryNamesPop, countryNamesDat, noDataCountries)
 
 
-# Function that will return the latest date.
+# Function that will return the latest dates.
 data_atDate <- function(inputDate) {
   data_evolution[which(data_evolution$date == inputDate),] %>%
     distinct() %>% # Distinct dates.
@@ -156,5 +182,6 @@ top5_countries <- data_evolution %>%
   top_n(5) %>%
   select(`Country/Region`) %>% # Keep any eye on `Country/Region`; might get error; ensure you use right key! (``)
   pull()
+
 
 
