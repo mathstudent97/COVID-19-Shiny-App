@@ -4,7 +4,7 @@
 getFullTableData <- function(groupBy) {
   padding_left <- max(str_length(data_evolution$value_new), na.rm = TRUE)
   data <- data_evolution %>%
-    filter(date == current_date) %>%
+    filter(date == current_date) %>% # Filter data according to the most current date.
     pivot_wider(names_from = var, values_from = c(value, value_new)) %>%
     select(-date, -Lat, -Long) %>% # Select the appropriate date along with its lat & long.
     add_row(
@@ -20,7 +20,7 @@ getFullTableData <- function(groupBy) {
       "value_active" = sum(.$value_active, na.rm = T),
       "value_new_active" = sum(.$value_new_active, na.rm = T)
     ) %>%
-    group_by(!!sym(groupBy), population) %>% # Group by according to input (Ex. confirmed so on...).
+    group_by(!!sym(groupBy), population) %>% # Group by according to input (Ex. confirmed, newDeceased, so on...).
     summarise(
       confirmed_total = sum(value_confirmed, na.rm = T),
       confirmed_new = sum(value_new_confirmed, na.rm = T),
@@ -57,9 +57,11 @@ getFullTableData <- function(groupBy) {
 
 
 
+# Render the table.
+
 output$fullTable <- renderDataTable({
   data <- getFullTableData("Country/Region")
-  columnNames <- c(
+  columnNames <- c( # Column names from the spreadsheet.
     "Country",
     "Total Confirmed",
     "New Confirmed",
