@@ -1,7 +1,9 @@
 library(htmltools)
 
-addLabel <- function(data) {
-  data$label <- paste0(
+
+
+addLabel <- function(data) { # Takes data.
+  data$label <- paste0( # Creates new col. named label.
     '<b>', ifelse(is.na(data$`Province/State`), data$`Country/Region`, data$`Province/State`), '</b><br>
     <table style="width:120px;">
     <tr><td>Confirmed:</td><td align="right">', data$confirmed, '</td></tr>
@@ -15,20 +17,24 @@ addLabel <- function(data) {
   return(data)
 }
 
+
+
 map <- leaflet(addLabel(data_latest)) %>%
-  setMaxBounds(-180, -90, 180, 90) %>%
+  setMaxBounds(-180, 0, 180, 0) %>%
   setView(0, 20, zoom = 2) %>%
   addTiles() %>%
   addProviderTiles(providers$CartoDB.Positron, group = "Light") %>%
   addProviderTiles(providers$HERE.satelliteDay, group = "Satellite") %>%
   addLayersControl(
     baseGroups    = c("Light", "Satellite"),
+    #overlayGroups = c("Confirmed", "Deceased", "Active")
     overlayGroups = c("Confirmed", "Confirmed (per capita)", "Estimated Recoveries", "Deceased", "Active", "Active (per capita)")
   ) %>%
   hideGroup("Confirmed (per capita)") %>%
   hideGroup("Estimated Recoveries") %>%
   hideGroup("Deceased") %>%
-  hideGroup("Active") %>%
+  #hideGroup("Active") %>%
+  hideGroup("Confirmed") %>%
   hideGroup("Active (per capita)") %>%
   addEasyButton(easyButton(
     icon    = "glyphicon glyphicon-globe", title = "Reset zoom",
@@ -38,6 +44,9 @@ map <- leaflet(addLabel(data_latest)) %>%
     onClick = JS("function(btn, map){ map.locate({setView: true, maxZoom: 6}); }")))
 
 
+
+# Will add a slider that is adjustable by the user.
+
 observe({
   req(input$timeSlider, input$overview_map_zoom)
   zoomLevel               <- input$overview_map_zoom
@@ -46,11 +55,13 @@ observe({
   data$activePerCapita    <- data$active / data$population * 100000
   
   leafletProxy("overview_map", data = data) %>%
-    clearMarkers() %>%
+    clearMarkers() %>% # Clear the markers everytime you move the slider.
     addCircleMarkers(
       lng          = ~Long,
       lat          = ~Lat,
-      radius       = ~log(confirmed^(zoomLevel / 2)),
+      #radius       = ~log(confirmed^(zoomLevel / 2)),
+      radius       = zoomLevel/2,
+      color        = "#00b3ff", #Color of the marker.
       stroke       = FALSE,
       fillOpacity  = 0.5,
       label        = ~label,
