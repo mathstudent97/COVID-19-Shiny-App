@@ -2,10 +2,10 @@
 
 
 # Sourcing UIs.
-source("ui_overview.R", local = TRUE)
-source("ui_plots.R", local = TRUE)
-source("ui_about.R", local = TRUE)
-source("ui_fullTable.R", local = TRUE)
+source("UI/ui_overview.R", local = TRUE)
+source("UI/ui_plots.R", local = TRUE)
+source("UI/ui_about.R", local = TRUE)
+source("UI/ui_fullTable.R", local = TRUE)
 
 
 
